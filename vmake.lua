@@ -1,3 +1,4 @@
+-- lastEdit=>2026.02.09-15:32
 -- lastEdit=>2026.01.27-21:16
 -- lastEdit=>2026.01.24-24:00
 -- lastEdit=>2026.01.08-22:56
@@ -9,10 +10,10 @@
         02.解析命令行参数, 获取命令行参数, 匹配命令, 调用对应函数
     核心功能结构:
         vmake_info: 软件信息
-        vmake_tool: 软件配置
-        system_func: 系统功能函数
+        vmake_tool: 软件配置, 用于基础配置
+        vmake_sysFunc: 系统功能函数
         vmake_cmd: 软件命令配置
-        vmake_sdk: 编译工具链配置
+        vmake_sdk: 编译工具链配置, 用于工具的详细配置
         vmake_pkg: 编译器工具链第三方包配置
     核心功能函数:
         01.vmake_init: 软件初始化配置
@@ -195,12 +196,24 @@ vmake_tool = {
         config = nil,
         cache = nil,
         version = "777.2.8",
-    }
+    },
+    -- (03.01.)nodejs<通过内置命令下载>
+    nodejs = {
+        url = "https://nodejs.org",  -- 官网地址
+        download_url = "https://nodejs.org/dist/v24.13.0/node-v24.13.0-win-x64.zip", -- 下载地址, 优先下载压缩包格式
+        install_flag = false,   -- 是否安装
+        excu = vmake_root.."/tool/nodejs/node.exe", -- 执行文件
+        npm = vmake_root.."/tool/nodejs/npm.cmd",
+        root = vmake_root.."/tool/nodejs", -- 安装路径
+        config = nil,   -- 配置文件
+        cache = vmake_root.."/tool/nodejs/cache",    -- 缓存路径
+        version = "24.13.0",  -- 版本
+    },
+    -- (03.02.)python<通过内置命令下载>
     -- msvc_vsget<通过内置命令下载>
     -- golang<通过内置命令下载>
     -- rust<通过内置命令下载>
-    -- nodejs<通过内置命令下载>
-    -- python<通过内置命令下载>
+    
     -- java<通过内置命令下载>
     -- dotnet<通过内置命令下载>
     
@@ -208,7 +221,7 @@ vmake_tool = {
 -- 系统功能
 -- (01)系统操作:路径操作,文件操作,字符串操作
 -- (02)内置工具操作
-system_func = {
+vmake_sysFunc = {
     -- >>>>>>>>>>>>>>>>>>>>>>>>-------------------------------<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     -- >>>>>>>>>>>>>>>>>>>>>>>>system_assist辅助函数.系统类功能<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     -- 彩色打印
@@ -243,7 +256,7 @@ system_func = {
         local create_cmd = "mkdir \""..dir_path.."\"";
         os.execute(del_cmd);
         os.execute(create_cmd);
-        system_func.print_color("cyan",string.format("\tdebug->location:<func>system_func.clean_dir...%s",dir_path));
+        vmake_sysFunc.print_color("cyan",string.format("\tdebug->location:<func>vmake_sysFunc.clean_dir...%s",dir_path));
     end;
     -- (01.02.)检测目标路径是否存在
     detect_path = function(path)
@@ -257,7 +270,7 @@ system_func = {
     move_dir = function(source_dir, target_dir)
         local cmd = string.format('robocopy "%s" "%s" /e /move >nul', source_dir, target_dir);
         os.execute(cmd);
-        system_func.print_color("cyan","\tdebug->location:<func>system_func.move_dir...",cmd);
+        vmake_sysFunc.print_color("cyan","\tdebug->location:<func>vmake_sysFunc.move_dir...",cmd);
     end;
     -- (01.04.)获取路径的最深层路径
     get_deep_path = function(path) -- 获取路径的深度, 文件夹下只有一个单独的文件, 没有其他文件或文件夹则继续向下遍历
@@ -324,42 +337,42 @@ system_func = {
     check_tool_install = function(tool_name) -- 检查软件安装状态
         for key,valu in pairs(vmake_tool) do    -- 判断没有内置的工具是否安装, 并更新软件安装状态
             local install_flag = false;
-            if (system_func.detect_path(valu.excu)==true) then install_flag=true; end;
+            if (vmake_sysFunc.detect_path(valu.excu)==true) then install_flag=true; end;
             valu.install_flag = install_flag;
         end
     end;
     -- (02.02.)检测指定的命令软件, 并进行直接调用
     run_vmake_tool = function(tool_name, excu_name, cmd_arg)
-        local cmd_install_flag = vmake_tool[tool_name].install_flag;
-        local cmd_excu_path = vmake_tool[tool_name][excu_name];
+        local cmd_install_flag = vmake_sdk[tool_name].install_flag;
+        local cmd_excu_path = vmake_sdk[tool_name][excu_name];
         if cmd_install_flag==false then
-            system_func.print_color("red", string.format("\t\terr->location:<func>vmake_cmd.tool.%s...", tool_name));
-            system_func.print_color("red", string.format("\t\terr->'%s' is not installed, please run 'vmake install %s' to install it first!!!", tool_name, tool_name));
+            vmake_sysFunc.print_color("red", string.format("\t\terr->location:<func>vmake_cmd.tool.%s...", tool_name));
+            vmake_sysFunc.print_color("red", string.format("\t\terr->'%s' is not installed, please run 'vmake install %s' to install it first!!!", tool_name, tool_name));
             return False;
         end
         local cmd = string.format("%s %s", cmd_excu_path, cmd_arg);
-        system_func.print_color("green", string.format("\t\tdebug->location:<func>system_func.run_vmake_tool..."));
-        system_func.print_color("green", string.format("\t\tdebug->the cmd: %s", cmd));
+        vmake_sysFunc.print_color("green", string.format("\t\tdebug->location:<func>vmake_sysFunc.run_vmake_tool..."));
+        vmake_sysFunc.print_color("green", string.format("\t\tdebug->the cmd: %s", cmd));
         os.execute(cmd);
         return True;
     end;
     -- (02.03.)默认下载
     install_vmake_tool = function(tool_name) 
         local down_url = vmake_tool[tool_name].download_url;
-        system_func.clean_dir(vmake_tool.a7z.cache);
+        vmake_sysFunc.clean_dir(vmake_tool.a7z.cache);
         if type(down_url)=="string" then
-            local down_file = system_func.split_path(down_url)[2];
+            local down_file = vmake_sysFunc.split_path(down_url)[2];
             local down_file_path = vmake_tool.aria2.cache.."/"..down_file;
-            if system_func.detect_path(down_file_path)==false then vmake_cmd.tool.aria2_inside(down_url, vmake_tool.aria2.cache, down_file); end;
-            local down_file_name = system_func.split_zip_filename(down_file)[1];
+            if vmake_sysFunc.detect_path(down_file_path)==false then vmake_cmd.tool.aria2_inside(down_url, vmake_tool.aria2.cache, down_file); end;
+            local down_file_name = vmake_sysFunc.split_zip_filename(down_file)[1];
             local unzip_dir = vmake_tool.a7z.cache.."/"..down_file_name;
             local install_dir = vmake_tool[tool_name].root;
             local version_info = install_dir.."/v"..vmake_tool[tool_name].version;
             vmake_cmd.tool.a7z_inside(down_file_path, unzip_dir, "x");
-            unzip_dir = system_func.get_deep_path(unzip_dir);
-            system_func.clean_dir(install_dir);
-            system_func.move_dir(unzip_dir,install_dir);
-            system_func.clean_dir(version_info);
+            unzip_dir = vmake_sysFunc.get_deep_path(unzip_dir);
+            vmake_sysFunc.clean_dir(install_dir);
+            vmake_sysFunc.move_dir(unzip_dir,install_dir);
+            vmake_sysFunc.clean_dir(version_info);
         end;
         if type(down_url)=="table" then
             local down_file = nil;
@@ -368,37 +381,37 @@ system_func = {
             local unzip_dir = nil;
             for idx=1,#down_url do  -- 下载
                 local tmp_down_url = down_url[idx];
-                local tmp_down_file = system_func.split_path(down_url[idx])[2];
+                local tmp_down_file = vmake_sysFunc.split_path(down_url[idx])[2];
                 local tmp_down_file_path = vmake_tool.aria2.cache.."/"..tmp_down_file;
-                if system_func.detect_path(tmp_down_file_path)==false then vmake_cmd.tool.aria2_inside(tmp_down_url, vmake_tool.aria2.cache, tmp_down_file); end;
+                if vmake_sysFunc.detect_path(tmp_down_file_path)==false then vmake_cmd.tool.aria2_inside(tmp_down_url, vmake_tool.aria2.cache, tmp_down_file); end;
                 if idx==1 then
                     down_file = tmp_down_file;
-                    down_file_name = system_func.split_zip_filename(tmp_down_file)[1];
+                    down_file_name = vmake_sysFunc.split_zip_filename(tmp_down_file)[1];
                     down_file_path = tmp_down_file_path;
                     unzip_dir = vmake_tool.a7z.cache.."/"..down_file_name;
                 end;
             end;
-            system_func.clean_dir(vmake_tool.a7z.cache); 
+            vmake_sysFunc.clean_dir(vmake_tool.a7z.cache); 
             vmake_cmd.tool.a7z_inside(down_file_path, unzip_dir, "x");  -- 解压
-            unzip_dir = system_func.get_deep_path(unzip_dir);   -- 获取深层解压路径
+            unzip_dir = vmake_sysFunc.get_deep_path(unzip_dir);   -- 获取深层解压路径
             local install_dir = vmake_tool[tool_name].root;
             local version_info = install_dir.."/v"..vmake_tool[tool_name].version;
-            system_func.clean_dir(install_dir);
-            system_func.move_dir(unzip_dir,install_dir);
-            system_func.clean_dir(version_info);
+            vmake_sysFunc.clean_dir(install_dir);
+            vmake_sysFunc.move_dir(unzip_dir,install_dir);
+            vmake_sysFunc.clean_dir(version_info);
         end;
-        system_func.print_color("cyan", string.format("\tdebug->location:<func>system_func.install.%s...success installed!!!",tool_name));
+        vmake_sysFunc.print_color("cyan", string.format("\tdebug->location:<func>vmake_sysFunc.install.%s...success installed!!!",tool_name));
     end;
     uninstall_vmake_tool = function(tool_name)
-        system_func.clean_dir(vmake_tool[tool_name].root);
-        system_func.print_color("cyan", string.format("\tinfo->location:<func>system_func.uninstall.%s...success remove!!!",tool_name));
+        vmake_sysFunc.clean_dir(vmake_tool[tool_name].root);
+        vmake_sysFunc.print_color("cyan", string.format("\tinfo->location:<func>vmake_sysFunc.uninstall.%s...success remove!!!",tool_name));
     end;
     -- (02.04.)设置环境变量
     set_vmake_tool_env = function(tool_name)
         local env_str_cat = function(key,valu)
             local env_valu_append = valu;
             local env_valu_exist = os.getenv(key);
-            if env_valu_exist~=nil then env_valu_exist = system_func.split_str(env_valu_exist,";"); end;
+            if env_valu_exist~=nil then env_valu_exist = vmake_sysFunc.split_str(env_valu_exist,";"); end;
             if type(env_valu_append)=="string" then env_valu_append = {env_valu_append}; end; 
         end;
         local get_shell_env = function(tool_name)
@@ -431,94 +444,97 @@ system_func = {
         for k,v in pairs(shell_env) do 
             for k1,v1 in pairs(v) do print(k,v1); end;
         end;
-        system_func.print_color("green", "\t\tinfo->location:<func>system_func.set_vmake_tool_env...");
-        system_func.print_color("green", string.format("\t\tdebug->set vmake tool '%s' env success!!!",tool_name));
+        vmake_sysFunc.print_color("green", "\t\tinfo->location:<func>vmake_sysFunc.set_vmake_tool_env...");
+        vmake_sysFunc.print_color("green", string.format("\t\tdebug->set vmake tool '%s' env success!!!",tool_name));
         return shell_env;
     end;
 }; 
 -- 软件命令配置
 vmake_cmd = {
     help = function()
-        system_func.print_color("blue","\tinfo->location:<func>vmake_cmd.help...usage: vmake <command> [options]");
-        system_func.print_color("green",string.format("\t\t%s\t->\t%s","help","show help information"));
-        system_func.print_color("green",string.format("\t\t%s\t->\t%s","list","list all installed tools"));
-        system_func.print_color("green",string.format("\t\t%s\t->\t%s","setenv","set tools environment"));
-        system_func.print_color("green",string.format("\t\t%s\t->\t%s","install","install a software tool"));
-        system_func.print_color("green",string.format("\t\t%s\t->\t%s","uninstall","uninstall a software tool"));
+        vmake_sysFunc.print_color("blue","\tinfo->location:<func>vmake_cmd.help...usage: vmake <command> [options]");
+        vmake_sysFunc.print_color("green",string.format("\t\t%s\t->\t%s","help","show help information"));
+        vmake_sysFunc.print_color("green",string.format("\t\t%s\t->\t%s","list","list all installed tools"));
+        vmake_sysFunc.print_color("green",string.format("\t\t%s\t->\t%s","setenv","set tools environment"));
+        vmake_sysFunc.print_color("green",string.format("\t\t%s\t->\t%s","install","install a software tool"));
+        vmake_sysFunc.print_color("green",string.format("\t\t%s\t->\t%s","uninstall","uninstall a software tool"));
     end;
     list = function()
-        system_func.print_color("green","\tinfo->location:<func>vmake_cmd.list...");
-        system_func.print_color("green","\tinfo->vmake_tool list:");
-        system_func.print_color("green","\t------------------------------");
-        system_func.print_color("green",string.format("\t%s\t->\t%s","tool_name","install_flag"));
-        system_func.print_color("green","\t------------------------------");
+        vmake_sysFunc.print_color("green","\tinfo->location:<func>vmake_cmd.list...");
+        vmake_sysFunc.print_color("green","\tinfo->vmake_tool list:");
+        vmake_sysFunc.print_color("green","\t------------------------------");
+        vmake_sysFunc.print_color("green",string.format("\t%s\t->\t%s","tool_name","install_flag"));
+        vmake_sysFunc.print_color("green","\t------------------------------");
         for key,valu in pairs(vmake_tool) do    -- 遍历打印所有工具
-            system_func.print_color("green",string.format("\t%s\t->\t%s",key,valu.install_flag));
+            vmake_sysFunc.print_color("green",string.format("\t%s\t->\t%s",key,valu.install_flag));
         end;
-        system_func.print_color("green","\t------------------------------");
+        vmake_sysFunc.print_color("green","\t------------------------------");
     end;
     setenv = nil,
     tool = {
         -- 开放命令
-        lua = function(cmd_arg) system_func.run_vmake_tool("lua", "excu", cmd_arg) end;
-        luarocks = function(cmd_arg) system_func.run_vmake_tool("luarocks", "excu", cmd_arg) end;
-        a7z = function(cmd_arg) system_func.run_vmake_tool("a7z", "excu", cmd_arg) end;
-        aria2 = function(cmd_arg) system_func.run_vmake_tool("aria2", "excu", cmd_arg) end;
-        pixi = function(cmd_arg) system_func.run_vmake_tool("pixi", "excu", cmd_arg) end;
+        lua = function(cmd_arg) vmake_sysFunc.run_vmake_tool("lua", "excu", cmd_arg) end;
+        luarocks = function(cmd_arg) vmake_sysFunc.run_vmake_tool("lua", "pkg_manager_excu", cmd_arg) end;
+        a7z = function(cmd_arg) vmake_sysFunc.run_vmake_tool("a7z", "excu", cmd_arg) end;
+        aria2 = function(cmd_arg) vmake_sysFunc.run_vmake_tool("aria2", "excu", cmd_arg) end;
+        pixi = function(cmd_arg) vmake_sysFunc.run_vmake_tool("pixi", "excu", cmd_arg) end;
         -- 内置命令
         luarocks_inside = function(cmd_arg)
-            local cmd = string.format("%s %s --lua-dir=%s --tree=%s", vmake_tool.luarocks.excu, cmd_arg,vmake_tool.lua.root,vmake_tool.luarocks.root)
-            system_func.print_color("cyan","\tdebug->location<func>vmake_cmd.luarocks_inside..."..cmd);
+            local cmd = string.format("%s %s --lua-dir=%s --tree=%s", vmake_sdk.lua.pkg_manager_excu, cmd_arg, vmake_sdk.lua.root,vmake_tool.lua.pkg_root)
+            vmake_sysFunc.print_color("cyan","\tdebug->location<func>vmake_cmd.luarocks_inside..."..cmd);
             os.execute(cmd);
         end;
         a7z_inside = function(source_file, dest_dir, unzip_flag) -- unzip_flag是a7z命令选项, "x"为解压到文件夹, "e"为直接解压到指定路径
             local cmd = string.format("%s %s %s -o%s", vmake_tool.a7z.excu, unzip_flag, source_file, dest_dir);
-            system_func.print_color("cyan","\tdebug->location<func>vmake_cmd.a7z_inside..."..cmd);
+            vmake_sysFunc.print_color("cyan","\tdebug->location<func>vmake_cmd.a7z_inside..."..cmd);
             os.execute(cmd);
             return True;
         end;
         aria2_inside = function(source_url, dest_dir, file_name)
             local cmd = string.format("%s %s --dir=%s --out=%s --allow-overwrite=true --auto-file-renaming=false", vmake_tool.aria2.excu, source_url, dest_dir, file_name);
-            system_func.print_color("cyan","\tdebug->location<func>vmake_cmd.aria2_inside..."..cmd);
+            vmake_sysFunc.print_color("cyan","\tdebug->location<func>vmake_cmd.aria2_inside..."..cmd);
             os.execute(cmd);
             return True;
         end;
         pixi_inside = function(cmd_arg)
             local cmd = string.format("%s %s --manifest-path=%s/pixi.toml", vmake_tool.pixi.excu, cmd_arg, vmake_tool.pixi.root);
-            system_func.print_color("cyan","\tdebug->location<func>vmake_cmd.pixi_inside..."..cmd);
+            vmake_sysFunc.print_color("cyan","\tdebug->location<func>vmake_cmd.pixi_inside..."..cmd);
             os.execute(cmd);
         end;
         -- 额外命令
-        git = function(cmd_arg) system_func.run_vmake_tool("git", "excu", cmd_arg) end;
-        vcpkg = function(cmd_arg) system_func.run_vmake_tool("vcpkg", "excu", cmd_arg) end;
-        cmake = function(cmd_arg) system_func.run_vmake_tool("cmake", "excu", cmd_arg) end;
-        xmake = function(cmd_arg) system_func.run_vmake_tool("xmake", "excu", cmd_arg) end;
-        xrepo = function(cmd_arg) system_func.run_vmake_tool("xmake", "xrepo", cmd_arg) end;
+        git = function(cmd_arg) vmake_sysFunc.run_vmake_tool("git", "excu", cmd_arg) end;
+        vcpkg = function(cmd_arg) vmake_sysFunc.run_vmake_tool("vcpkg", "excu", cmd_arg) end;
+        cmake = function(cmd_arg) vmake_sysFunc.run_vmake_tool("cmake", "excu", cmd_arg) end;
+        xmake = function(cmd_arg) vmake_sysFunc.run_vmake_tool("xmake", "excu", cmd_arg) end;
+        xrepo = function(cmd_arg) vmake_sysFunc.run_vmake_tool("xmake", "pkg_manager_excu", cmd_arg) end;
+        node = function(cmd_arg) vmake_sysFunc.run_vmake_tool("nodejs", "excu", cmd_arg) end;
+        npm = function() vmake_sysFunc.run_vmake_tool("nodejs", "pkg_manager_excu", cmd_arg) end;
     },
     install = { -- 核心逻辑: 下载->解压->移动->创建版本信息
-        pixi = function() system_func.install_vmake_tool("pixi"); end;
-        git = function() system_func.install_vmake_tool("git"); end;
-        cmake = function() system_func.install_vmake_tool("cmake"); end;
-        xmake = function() system_func.install_vmake_tool("xmake"); end;
+        pixi = function() vmake_sysFunc.install_vmake_tool("pixi"); end;
+        git = function() vmake_sysFunc.install_vmake_tool("git"); end;
+        cmake = function() vmake_sysFunc.install_vmake_tool("cmake"); end;
+        xmake = function() vmake_sysFunc.install_vmake_tool("xmake"); end;
         vcpkg = function() 
-            system_func.install_vmake_tool("vcpkg");
+            vmake_sysFunc.install_vmake_tool("vcpkg");
             os.execute(string.format("%s/bootstrap-vcpkg.bat", vmake_tool.vcpkg.root)); -- 使用官方脚本安装
         end;
-        mingw_w64 = function() system_func.install_vmake_tool("mingw_w64"); end;
-        mingw_llvm = function() system_func.install_vmake_tool("mingw_llvm"); end;
+        mingw_w64 = function() vmake_sysFunc.install_vmake_tool("mingw_w64"); end;
+        mingw_llvm = function() vmake_sysFunc.install_vmake_tool("mingw_llvm"); end;
         msvc_vsget = nil,
-        msvc_llvm = function() system_func.install_vmake_tool("msvc_llvm"); end;
+        msvc_llvm = function() vmake_sysFunc.install_vmake_tool("msvc_llvm"); end;
+        nodejs = function() vmake_sysFunc.install_vmake_tool("nodejs"); end;
     },
     uninstall = {
-        pixi = function() system_func.uninstall_vmake_tool("pixi"); end;
-        git = function() system_func.uninstall_vmake_tool("git"); end;
-        cmake = function() system_func.uninstall_vmake_tool("cmake"); end;
-        xmake = function() system_func.uninstall_vmake_tool("xmake"); end;
-        vcpkg = function() system_func.uninstall_vmake_tool("vcpkg"); end;
-        mingw_w64 = function() system_func.uninstall_vmake_tool("mingw_w64"); end;
-        mingw_llvm = function() system_func.uninstall_vmake_tool("mingw_llvm"); end;
+        pixi = function() vmake_sysFunc.uninstall_vmake_tool("pixi"); end;
+        git = function() vmake_sysFunc.uninstall_vmake_tool("git"); end;
+        cmake = function() vmake_sysFunc.uninstall_vmake_tool("cmake"); end;
+        xmake = function() vmake_sysFunc.uninstall_vmake_tool("xmake"); end;
+        vcpkg = function() vmake_sysFunc.uninstall_vmake_tool("vcpkg"); end;
+        mingw_w64 = function() vmake_sysFunc.uninstall_vmake_tool("mingw_w64"); end;
+        mingw_llvm = function() vmake_sysFunc.uninstall_vmake_tool("mingw_llvm"); end;
         msvc_vsget = nil,
-        msvc_llvm = function() system_func.uninstall_vmake_tool("msvc_llvm"); end;
+        msvc_llvm = function() vmake_sysFunc.uninstall_vmake_tool("msvc_llvm"); end;
     },
     update = nil,
     clean = nil,
@@ -527,8 +543,9 @@ vmake_cmd = {
     clean_cache = nil,
 };
 -- 编译工具链配置
-vmake_sdk = {
+vmake_sdk = { 
     vmake_sdk_tmplate = { 
+        root = nil,
         excu = nil,
         version = nil,
         pkg_root = nil,
@@ -538,32 +555,63 @@ vmake_sdk = {
         include_root = nil,
         lib_root = nil,
         share_root = nil,
+        cache = nil,
         sys_env = { -- 配置环境变量, key为环境变量名, value为环境变量值, value可以为字符串或字符串数组
             path = {"path1","path2",},
             k1 = {"k1v1","k2v2"},
             k2 = "k2v",
         },
-    };
+    },
+    a7z = {
+        root = vmake_tool.a7z.root,
+        excu = vmake_tool.a7z.root.."/7za.exe",
+        version = vmake_tool.a7z.version,
+        pkg_root = nil,
+        pkg_manager_root = nil,
+        pkg_manager_excu = nil,
+        bin_root = nil,
+        include_root = nil,
+        lib_root = nil,
+        share_root = nil,
+        cache = vmake_tool.a7z.root.."/cache",
+        sys_env = {path = vmake_tool.a7z.root,},
+    },
+    aria2 = {
+        root = vmake_tool.aria2.root,
+        excu = vmake_tool.aria2.root.."/aria2c.exe",
+        version = vmake_tool.aria2.version,
+        pkg_root = nil,
+        pkg_manager_root = nil,
+        pkg_manager_excu = nil,
+        bin_root = nil,
+        include_root = nil,
+        lib_root = nil,
+        share_root = nil,
+        cache = vmake_tool.aria2.root.."/cache",
+        sys_env = {path = vmake_tool.aria2.root,},
+    },
     lua = {
-        excu = vmake_tool.lua.excu,
+        root = vmake_tool.lua.root,
+        excu = vmake_tool.lua.root.."/bin/lua.exe",
         version = vmake_tool.lua.version,
-        pkg_root = vmake_tool.luarocks.root,
-        pkg_manager_root = vmake_tool.luarocks.root,
-        pkg_manager_excu = vmake_tool.luarocks.excu,
+        pkg_root = vmake_tool.lua.root.."/pkg",
+        pkg_manager_root = vmake_tool.lua.root.."/luarocks",
+        pkg_manager_excu = vmake_tool.lua.root.."/luarocks/luarocks.exe",
         bin_root = vmake_tool.lua.root.."/bin",
         include_root = vmake_tool.lua.root.."/include",
         lib_root = vmake_tool.lua.root.."/lib",
         share_root = nil,
+        cache = nil,
         sys_env = { -- 配置环境变量, key为环境变量名, value为环境变量值, value可以为字符串或字符串数组
             path = {
                 vmake_tool.lua.root.."/bin",
-                vmake_tool.luarocks.root,
-            },
-            
+                vmake_tool.lua.root.."/luarocks",
+            },   
         },
-    };
+    },
     pixi = { 
-        excu = vmake_tool.pixi.excu,
+        root = vmake_tool.pixi.root,
+        excu = vmake_tool.pixi.root.."/pixi.exe",
         version = vmake_tool.pixi.version,
         pkg_root = nil,
         pkg_manager_root = nil,
@@ -572,37 +620,78 @@ vmake_sdk = {
         include_root = nil,
         lib_root = nil,
         share_root = nil,
-        sys_env = {
-            path = vmake_tool.pixi_root,
-        },
-    };
+        cache = nil,
+        sys_env = {path = vmake_tool.pixi.root,},
+    },
+    git = {},
+    xmake = {
+        root = vmake_tool.xmake.root,
+        excu = vmake_tool.xmake.root.."/xmake.exe",
+        version = vmake_tool.xmake.version,
+        pkg_root = vmake_tool.xmake.root.."/pkg",
+        pkg_manager_root = vmake_tool.xmake.root,
+        pkg_manager_excu = vmake_tool.xmake.root.."/xrepo.bat",
+        bin_root = nil,
+        include_root = nil,
+        lib_root = nil,
+        share_root = nil,
+        cache = nil,
+        sys_env = { path = vmake_tool.xmake.root,},
+    },
+    vcpkg = {
+        root = vmake_tool.vcpkg.root,
+        excu = vmake_tool.vcpkg.root.."/vcpkg.exe",
+        version = vmake_tool.vcpkg.version,
+        pkg_root = nil,
+        pkg_manager_root = nil,
+        pkg_manager_excu = nil,
+        bin_root = nil,
+        include_root = nil,
+        lib_root = nil,
+        share_root = nil,
+        cache = nil,
+        sys_env = {path = vmake_tool.vcpkg.root},
+    },
     mingw_w64 = {
         
-    };
+    },
     mingw_llvm = {
         
-    };
+    },
     msvc_vsget = {
         
-    };
+    },
     msvc_llvm = {
         
-    };
+    },
     vcpkg = { 
         
-    };
+    },
     golang = {
         
-    };
+    },
     rust = {
         
-    };
+    },
     nodejs = {
-        
-    };
+        root = vmake_tool.nodejs.root,
+        excu = vmake_tool.nodejs.root.."/node.exe",
+        version = vmake_tool.nodejs.version,
+        pkg_root = vmake_tool.nodejs.root.."/pkg",
+        pkg_manager_root = vmake_tool.nodejs.root,
+        pkg_manager_excu = vmake_tool.nodejs.root.."/npm.cmd",
+        bin_root = nil,
+        include_root = nil,
+        lib_root = nil,
+        share_root = nil,
+        cache = vmake_tool.nodejs.root.."/cache",
+        sys_env = {
+            path = vmake_tool.nodejs.root,
+        },
+    },
     python = {
         
-    };
+    },
 };
 -- 编译器工具链第三方包配置
 vmake_pkg = { 
@@ -620,43 +709,13 @@ end
 function analyze_term()
     -- 命令实现函数
     function term_install(term_cmd_conf) -- 安装 
-        if term_cmd_conf=="" then
-            system_func.print_color("cyan","debug->>>install all<<<");
-        elseif term_cmd_conf=="cmake" then
-            vmake_cmd.install.cmake();
-        elseif term_cmd_conf=="xmake" then
-            vmake_cmd.install.xmake();
-        elseif term_cmd_conf=="vcpkg" then
-            vmake_cmd.install.vcpkg();
-        elseif term_cmd_conf=="mingw_w64" then
-            vmake_cmd.install.mingw_w64();
-        elseif term_cmd_conf=="mingw_llvm" then
-            vmake_cmd.install.mingw_llvm();
-        -- elseif term_cmd_conf=="msvc_vsget" then
-        elseif term_cmd_conf=="msvc_llvm" then
-            vmake_cmd.install.msvc_llvm();
-        end
+        vmake_cmd.install[term_cmd_conf]();
     end
     function term_uninstall(term_cmd_conf) -- 卸载
-        if term_cmd_conf=="git" then
-            vmake_cmd.uninstall.git();
-        elseif term_cmd_conf=="cmake" then
-            vmake_cmd.uninstall.cmake();
-        elseif term_cmd_conf=="xmake" then
-            vmake_cmd.uninstall.xmake();
-        elseif term_cmd_conf=="mingw_w64" then
-            vmake_cmd.uninstall.mingw_w64();
-        elseif term_cmd_conf=="mingw_llvm" then
-            vmake_cmd.uninstall.mingw_llvm();
-        -- elseif term_cmd_conf=="msvc_vsget" then
-        elseif term_cmd_conf=="msvc_llvm" then
-            vmake_cmd.uninstall.msvc_llvm();
-        elseif term_cmd_conf=="vcpkg" then
-            vmake_cmd.uninstall.vcpkg();
-        end
+        vmake_cmd.uninstall[term_cmd_conf]();
     end
 
-    system_func.print_color("green","\tinfo->location:<func>analyze_term...analyze cmd start!!!");
+    vmake_sysFunc.print_color("green","\tinfo->location:<func>analyze_term...analyze cmd start!!!");
     -- (01)获取命令行参数
     -- (02)命令匹配
     -- 获取全局变量下传递的命令行参数
@@ -668,10 +727,10 @@ function analyze_term()
     if term_cmd_conf==nil then  -- 空参数处理
         term_cmd_conf = "";
     end
-    system_func.print_color("cyan",string.format("\tdebug->location<func>analyze_term...term_cmd_type:'%s'\tterm_cmd_conf:'%s'",term_cmd_type,term_cmd_conf));
+    vmake_sysFunc.print_color("cyan",string.format("\tdebug->location<func>analyze_term...term_cmd_type:'%s'\tterm_cmd_conf:'%s'",term_cmd_type,term_cmd_conf));
     -- 命令调用
     if term_cmd_type~=nil then
-        -- 内置工具
+        -- 内置工具命令调用
         if (term_cmd_type=="lua") then
             vmake_cmd.tool.lua(term_cmd_conf);
         elseif (term_cmd_type=="luarocks") then
@@ -684,20 +743,20 @@ function analyze_term()
             vmake_cmd.tool.pixi(term_cmd_conf);
         elseif (term_cmd_type=="prefix") then
             vmake_cmd.tool.pixi_inside(term_cmd_conf);
-        -- 工具命令
+        -- 工具命令分析
         elseif (term_cmd_type=="install") then
             term_install(term_cmd_conf);
-            system_func.check_tool_install();
+            vmake_sysFunc.check_tool_install();
         elseif (term_cmd_type=="uninstall") then
             term_uninstall(term_cmd_conf);
-            system_func.check_tool_install();
+            vmake_sysFunc.check_tool_install();
         elseif (term_cmd_type=="list") then
             vmake_cmd.list();
         elseif (term_cmd_type=="setEnv" or term_cmd_type=="setenv") then
             vmake_cmd.setenv(term_cmd_conf);
         elseif (term_cmd_type=="help") then
             vmake_cmd.help(term_cmd_conf);
-        -- 安装工具
+        -- 安装工具命令调用
         elseif (term_cmd_type=="git") then
             vmake_cmd.tool.git(term_cmd_conf);
         elseif (term_cmd_type=="vcpkg") then
@@ -717,6 +776,10 @@ function analyze_term()
         -- 全部不匹配
         -- else
         --     vmake_cmd.help(term_cmd_conf);
+        elseif (term_cmd_type=="node") then
+            vmake_cmd.tool.node(term_cmd_conf);
+        elseif (term_cmd_type=="npm") then
+            vmake_cmd.tool.npm(term_cmd_conf);
         end
     end
 -- 分析函数结束
@@ -729,7 +792,7 @@ end
 
 -- 01.软件初始化配置
 function vmake_init()
-    system_func.check_tool_install(); -- 检测内置软件安装状态
+    vmake_sysFunc.check_tool_install(); -- 检测内置软件安装状态
 end
 
 -- 05.软件结束配置
@@ -738,7 +801,7 @@ function vmake_over()
 end
 
 function main()
-    system_func.print_color("blue","info->location:<func>main...init vmake!!!");
+    vmake_sysFunc.print_color("blue","info->location:<func>main...init vmake!!!");
     -- 软件初始化
     vmake_init();
     -- -- 软件配置分析 
@@ -747,8 +810,8 @@ function main()
     analyze_term();
     -- -- 项目配置分析
     -- analyze_proj();
-    system_func.print_color("blue","info->location:<func>main...over vmake!!!");
-    -- system_func.set_vmake_tool_env("vmake_sdk");
+    vmake_sysFunc.print_color("blue","info->location:<func>main...over vmake!!!");
+    -- vmake_sysFunc.set_vmake_tool_env("vmake_sdk");
     local retval = nil;
     return retval;
 end
