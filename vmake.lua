@@ -1,3 +1,4 @@
+-- lastEdit=>2026.02.13-23:28
 -- lastEdit=>2026.02.09-15:32
 -- lastEdit=>2026.01.27-21:16
 -- lastEdit=>2026.01.24-24:00
@@ -29,14 +30,15 @@
 vmake_root = io.popen("cd"):read("*a");
 vmake_root = string.gsub(vmake_root, "\n", "");
 vmake_root = string.gsub(vmake_root, "\\", "/");
-lua_module_root = vmake_root .. "/tool/lua/luarocks/lib/lua/5.4/?.dll";
-lua_share_root = vmake_root .. "/tool/lua/luarocks/share/lua/5.4/?.lua";
-package.path = lua_share_root;  -- 引入第三方库, 源文件
-package.cpath = lua_module_root;    -- 引入第三方库, 动态库
-vmake_lua_module = {
-    lfs = require("lfs"),
-    penlight = require("pl.path"),
-};
+-- 第三方库
+-- lua_module_root = vmake_root .. "/tool/lua/luarocks/lib/lua/5.4/?.dll";
+-- lua_share_root = vmake_root .. "/tool/lua/luarocks/share/lua/5.4/?.lua";
+-- package.path = lua_share_root;  -- 引入第三方库, 源文件
+-- package.cpath = lua_module_root;    -- 引入第三方库, 动态库
+-- vmake_lua_module = {
+--     lfs = require("lfs"),
+--     penlight = require("pl.path"),
+-- };
 -- 软件信息
 vmake_info = {
     name = "vmake",
@@ -197,6 +199,7 @@ vmake_tool = {
         cache = nil,
         version = "777.2.8",
     },
+    -- (02.08.)msvc_vsget<通过内置命令下载>
     -- (03.01.)nodejs<通过内置命令下载>
     nodejs = {
         url = "https://nodejs.org",  -- 官网地址
@@ -210,13 +213,21 @@ vmake_tool = {
         version = "24.13.0",  -- 版本
     },
     -- (03.02.)python<通过内置命令下载>
-    -- msvc_vsget<通过内置命令下载>
-    -- golang<通过内置命令下载>
-    -- rust<通过内置命令下载>
-    
-    -- java<通过内置命令下载>
-    -- dotnet<通过内置命令下载>
-    
+    -- (03.03.)rust<通过内置命令下载>
+    -- (03.04.)golang<通过内置命令下载>
+    -- (03.05.)java<通过内置命令下载>
+    -- (03.06.)dotnet<通过内置命令下载>
+    -- (03.07.)vlang<通过内置命令下载>
+    vlang = {
+        url = "https://github.com/vlang/v",  -- 官网地址
+        download_url = "https://github.com/vlang/v/releases/download/weekly.2026.07/v_windows.zip", -- 下载地址, 优先下载压缩包格式
+        install_flag = false,   -- 是否安装
+        excu = nil, -- 执行文件
+        root = vmake_root.."/tool/vlang", -- 安装路径
+        config = nil,   -- 配置文件
+        cache = nil,    -- 缓存路径
+        version = "2026week07",  -- 版本
+    },
 };
 -- 系统功能
 -- (01)系统操作:路径操作,文件操作,字符串操作
@@ -237,9 +248,7 @@ vmake_sysFunc = {
             reset = "\x1b[0m",
         };
         local print_color = color;
-        if color_table[print_color] == nil then
-            print_color = "green";
-        end
+        if color_table[print_color] == nil then print_color = "green"; end;
         local out_str = str;
         local arg_par = select("#",...);
         if arg_par>0 then
@@ -407,46 +416,84 @@ vmake_sysFunc = {
         vmake_sysFunc.print_color("cyan", string.format("\tinfo->location:<func>vmake_sysFunc.uninstall.%s...success remove!!!",tool_name));
     end;
     -- (02.04.)设置环境变量
-    set_vmake_tool_env = function(tool_name)
+    set_vmake_tool_env_str  = function(tool_name)
+        vmake_sysFunc.print_color("green", "\tinfo->location:<func>vmake_sysFunc.set_vmake_tool_env_str...");
         local env_str_cat = function(key,valu)
             local env_valu_append = valu;
             local env_valu_exist = os.getenv(key);
             if env_valu_exist~=nil then env_valu_exist = vmake_sysFunc.split_str(env_valu_exist,";"); end;
-            if type(env_valu_append)=="string" then env_valu_append = {env_valu_append}; end; 
+            if type(env_valu_append)=="string" then env_valu_append = {env_valu_append}; end;
         end;
         local get_shell_env = function(tool_name)
             local retval = {};
             if tool_name=="vmake_sdk" then
-                for k0,v0 in pairs(vmake_sdk) do 
+                for k0,v0 in pairs(vmake_sdk) do
                     local sdk = vmake_sdk[k0];
                     local sdk_env = sdk.sys_env;
-                    if sdk_env~=nil then
-                        for k,v in pairs(sdk_env) do -- 拼接所有变量到shell_env
-                            if retval[k]==nil then retval[k] = {}; end;
-                            if type(v)=="string" then table.insert(retval[k],v); end;
-                            if type(v)=="table" then for k1,v1 in pairs(v) do table.insert(retval[k],v1); end; end;
-                        end;
+                    -- 判断active_flag是否为True，只有为True才添加环境变量
+                    if (sdk.active_flag==True and sdk_env~=nil) then
+                        
+                            for k,v in pairs(sdk_env) do -- 拼接所有变量到shell_env
+                                if retval[k]==nil then retval[k] = {}; end;
+                                if type(v)=="string" then table.insert(retval[k],v); end;
+                                if type(v)=="table" then for k1,v1 in pairs(v) do table.insert(retval[k],v1); end; end;
+                            end;
                     end;
                 end;
                 return retval;
             end;
-            if vmake_sdk[tool_name]==nil then return nil; end;
             local sdk = vmake_sdk[tool_name];
             local sdk_env = sdk.sys_env;
-            for k,v in pairs(sdk_env) do -- 拼接所有变量到shell_env
-                if table[k]==nil then retval[k] = {}; end;
-                if type(v)=="string" then table.insert(retval[k],v); end;
-                if type(v)=="table" then for k1,v1 in pairs(v) do table.insert(retval[k],v1); end; end;
+            if sdk.active_flag==True then   -- 判断active_flag是否为True，只有为True才添加环境变量
+                for k,v in pairs(sdk_env) do -- 拼接所有变量到shell_env
+                    if retval[k]==nil then retval[k] = {}; end;
+                    if type(v)=="string" then table.insert(retval[k],v); end;
+                    if type(v)=="table" then for k1,v1 in pairs(v) do table.insert(retval[k],v1); end; end;
+                end;
             end;
             return retval;
         end;
+        if (vmake_sdk[tool_name]==nil and tool_name~="vmake_sdk") then
+            vmake_sysFunc.print_color("red", string.format("\terr->tool_name: %s 'not exist'!!!",tool_name)); return nil; end;
         local shell_env = get_shell_env(tool_name);
-        for k,v in pairs(shell_env) do 
-            for k1,v1 in pairs(v) do print(k,v1); end;
-        end;
-        vmake_sysFunc.print_color("green", "\t\tinfo->location:<func>vmake_sysFunc.set_vmake_tool_env...");
-        vmake_sysFunc.print_color("green", string.format("\t\tdebug->set vmake tool '%s' env success!!!",tool_name));
+        for k,v in pairs(shell_env) do for k1,v1 in pairs(v) do print(k,v1); end;end;
+        vmake_sysFunc.print_color("green", string.format("\tdebug->set vmake tool '%s' env success!!!",tool_name));
         return shell_env;
+    end;
+    -- [vir,by.iflow,2026.02.13-23:28](02.04.)设置环境变量并在新terminal中测试
+    set_vmake_tool_env_term = function(tool_name)
+        vmake_sysFunc.print_color("green", "\tinfo->location:<func>vmake_sysFunc.set_vmake_tool_env_term...");
+        -- A.获取命令字符串, 调用set_vmake_tool_env_str
+        local shell_env = vmake_sysFunc.set_vmake_tool_env_str(tool_name);
+        if shell_env==nil then
+            vmake_sysFunc.print_color("red", "\terr->failed to get shell env!!!");
+            return false;
+        end
+        -- B.环境变量写入powershell文件
+        local ps_file_path = vmake_root .. "/cache/tmp_setenv.ps1";
+        vmake_sysFunc.clean_dir(ps_file_path);
+        local ps_file = io.open(ps_file_path, "w");
+        if ps_file==nil then
+            vmake_sysFunc.print_color("red", string.format("\terr->failed to open file: %s", ps_file_path));
+            return false;
+        end
+        -- 写入环境变量设置命令
+        for key, val_table in pairs(shell_env) do
+            local val_str = table.concat(val_table, ";");
+            ps_file:write(string.format("$env:%s=\"%s\";", key, val_str));
+        end
+        -- 写入提示信息
+        ps_file:write(string.format("Write-Host 'vmake env: %s' -ForegroundColor Green\n", tool_name));
+        -- 保持终端打开
+        ps_file:write("Write-Host 'Press Enter to exit...' -ForegroundColor Yellow\n");
+        ps_file:write("Read-Host\n");
+        ps_file:close();
+        -- C.调用powershell文件打开新终端
+        local cmd = string.format('start powershell.exe -NoExit -ExecutionPolicy Bypass -File "%s"', ps_file_path);
+        vmake_sysFunc.print_color("cyan", string.format("\tdebug->executing: %s", cmd));
+        os.execute(cmd);
+        vmake_sysFunc.print_color("green", "\tdebug->set vmake tool env and open new terminal success!!!");
+        return true; 
     end;
 }; 
 -- 软件命令配置
@@ -470,7 +517,7 @@ vmake_cmd = {
         end;
         vmake_sysFunc.print_color("green","\t------------------------------");
     end;
-    setenv = nil,
+    setenv = function() vmake_sysFunc.set_vmake_tool_env_term("vmake_sdk");end;
     tool = {
         -- 开放命令
         lua = function(cmd_arg) vmake_sysFunc.run_vmake_tool("lua", "excu", cmd_arg) end;
@@ -524,6 +571,7 @@ vmake_cmd = {
         msvc_vsget = nil,
         msvc_llvm = function() vmake_sysFunc.install_vmake_tool("msvc_llvm"); end;
         nodejs = function() vmake_sysFunc.install_vmake_tool("nodejs"); end;
+        vlang = function() vmake_sysFunc.install_vmake_tool("vlang"); end;
     },
     uninstall = {
         pixi = function() vmake_sysFunc.uninstall_vmake_tool("pixi"); end;
@@ -544,25 +592,27 @@ vmake_cmd = {
 };
 -- 编译工具链配置
 vmake_sdk = { 
-    vmake_sdk_tmplate = { 
-        root = nil,
-        excu = nil,
-        version = nil,
-        pkg_root = nil,
-        pkg_manager_root = nil,
-        pkg_manager_excu = nil,
-        bin_root = nil,
-        include_root = nil,
-        lib_root = nil,
-        share_root = nil,
-        cache = nil,
-        sys_env = { -- 配置环境变量, key为环境变量名, value为环境变量值, value可以为字符串或字符串数组
-            path = {"path1","path2",},
-            k1 = {"k1v1","k2v2"},
-            k2 = "k2v",
-        },
-    },
+    -- vmake_sdk_tmplate = { 
+    --     active_flag=True,
+    --     root = nil,
+    --     excu = nil,
+    --     version = nil,
+    --     pkg_root = nil,
+    --     pkg_manager_root = nil,
+    --     pkg_manager_excu = nil,
+    --     bin_root = nil,
+    --     include_root = nil,
+    --     lib_root = nil,
+    --     share_root = nil,
+    --     cache = nil,
+    --     sys_env = { -- 配置环境变量, key为环境变量名, value为环境变量值, value可以为字符串或字符串数组
+    --         path = {"path1","path2",},
+    --         k1 = {"k1v1","k2v2"},
+    --         k2 = "k2v",
+    --     },
+    -- },
     a7z = {
+        active_flag=True,
         root = vmake_tool.a7z.root,
         excu = vmake_tool.a7z.root.."/7za.exe",
         version = vmake_tool.a7z.version,
@@ -577,6 +627,7 @@ vmake_sdk = {
         sys_env = {path = vmake_tool.a7z.root,},
     },
     aria2 = {
+        active_flag=True,
         root = vmake_tool.aria2.root,
         excu = vmake_tool.aria2.root.."/aria2c.exe",
         version = vmake_tool.aria2.version,
@@ -591,6 +642,7 @@ vmake_sdk = {
         sys_env = {path = vmake_tool.aria2.root,},
     },
     lua = {
+        active_flag=True,
         root = vmake_tool.lua.root,
         excu = vmake_tool.lua.root.."/bin/lua.exe",
         version = vmake_tool.lua.version,
@@ -610,6 +662,7 @@ vmake_sdk = {
         },
     },
     pixi = { 
+        active_flag=True,
         root = vmake_tool.pixi.root,
         excu = vmake_tool.pixi.root.."/pixi.exe",
         version = vmake_tool.pixi.version,
@@ -623,8 +676,23 @@ vmake_sdk = {
         cache = nil,
         sys_env = {path = vmake_tool.pixi.root,},
     },
-    git = {},
+    git = {
+        active_flag=False,
+        root = vmake_tool.git.root,
+        excu = vmake_tool.git.root.."/bin/git.exe",
+        version = vmake_tool.git.version,
+        pkg_root = nil,
+        pkg_manager_root = nil,
+        pkg_manager_excu = nil,
+        bin_root = nil,
+        include_root = nil,
+        lib_root = nil,
+        share_root = nil,
+        cache = nil,
+        sys_env = { path = vmake_tool.git.root,},
+    },
     xmake = {
+        active_flag=False,
         root = vmake_tool.xmake.root,
         excu = vmake_tool.xmake.root.."/xmake.exe",
         version = vmake_tool.xmake.version,
@@ -639,6 +707,7 @@ vmake_sdk = {
         sys_env = { path = vmake_tool.xmake.root,},
     },
     vcpkg = {
+        active_flag=False,
         root = vmake_tool.vcpkg.root,
         excu = vmake_tool.vcpkg.root.."/vcpkg.exe",
         version = vmake_tool.vcpkg.version,
@@ -650,30 +719,51 @@ vmake_sdk = {
         lib_root = nil,
         share_root = nil,
         cache = nil,
-        sys_env = {path = vmake_tool.vcpkg.root},
+        sys_env = {
+            path = vmake_tool.vcpkg.root,
+            vcpkg_root = vmake_tool.vcpkg.root,
+        },
     },
     mingw_w64 = {
-        
+        active_flag=False,
+        root = vmake_tool.mingw_w64.root,
+        excu = vmake_tool.mingw_w64.root.."/bin/gcc.exe",
+        version = vmake_tool.mingw_w64.version,
+        pkg_root = nil,
+        pkg_manager_root = nil,
+        pkg_manager_excu = nil,
+        bin_root = nil,
+        include_root = nil,
+        lib_root = nil,
+        share_root = nil,
+        cache = nil,
+        sys_env = {path = vmake_tool.mingw_w64.root.."/bin"},
     },
     mingw_llvm = {
-        
+        active_flag=False,
+        root = vmake_tool.mingw_llvm.root,
+        excu = vmake_tool.mingw_llvm.root.."/bin/gcc.exe",
+        version = vmake_tool.mingw_llvm.version,
+        pkg_root = nil,
+        pkg_manager_root = nil,
+        pkg_manager_excu = nil,
+        bin_root = nil,
+        include_root = nil,
+        lib_root = nil,
+        share_root = nil,
+        cache = nil,
+        sys_env = {path = vmake_tool.mingw_llvm.root.."/bin"},
     },
     msvc_vsget = {
-        
     },
     msvc_llvm = {
-        
-    },
-    vcpkg = { 
-        
     },
     golang = {
-        
     },
-    rust = {
-        
+    rust = { 
     },
     nodejs = {
+        active_flag=True,
         root = vmake_tool.nodejs.root,
         excu = vmake_tool.nodejs.root.."/node.exe",
         version = vmake_tool.nodejs.version,
@@ -686,7 +776,12 @@ vmake_sdk = {
         share_root = nil,
         cache = vmake_tool.nodejs.root.."/cache",
         sys_env = {
-            path = vmake_tool.nodejs.root,
+            path = {
+                vmake_tool.nodejs.root,
+                vmake_tool.nodejs.root.."/pkg"
+            },
+            npm_config_cache = vmake_tool.nodejs.root.."/cache",
+            npm_config_prefix = vmake_tool.nodejs.root.."/pkg"
         },
     },
     python = {
@@ -811,7 +906,6 @@ function main()
     -- -- 项目配置分析
     -- analyze_proj();
     vmake_sysFunc.print_color("blue","info->location:<func>main...over vmake!!!");
-    -- vmake_sysFunc.set_vmake_tool_env("vmake_sdk");
     local retval = nil;
     return retval;
 end
