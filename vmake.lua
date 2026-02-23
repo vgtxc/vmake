@@ -1,3 +1,4 @@
+-- lastEdit=>2026.02.22-23:36
 -- lastEdit=>2026.02.22-13:31
 -- lastEdit=>2026.02.21-23:56 
 -- lastEdit=>2026.02.18-22:52 
@@ -9,6 +10,7 @@
 -- lastEdit=>2026.01.08-22:56
 -- creat: 2026.01.08
 -- aut: vgtxc
+-- ver: 0.0.1#2026.02.22-13:33
 -- ver: 0.0.0#2026.02.22-13:33
 -- ver: v.src#2026.01.24-22:46
 --[[
@@ -21,15 +23,19 @@
         vmake_sys: 系统功能函数
         vmake_cmd: 软件命令配置
         vmake_pkg: 编译器工具链第三方包配置
+        注意: 涉及脚本创建的函数
+            vmake_sys.set_vmake_tool_env_cat_table();
+            vmake_sys.set_vmake_tool_env_gen_table();
+            vmake_sys.set_vmake_tool_env_gen_str();
+            vmake_sys.set_vmake_tool_env_gen_shell();
+            vmake_sys.set_vmake_tool_env_gen_term();
+            vmake_cmd.setenv();
+            vmake_cmd.creat_batch();
     核心功能函数:
         01.vmake_init: 软件初始化配置
         02.analyze_config: 解析软件配置文件
         03.analyze_term: 解析命令行参数
         04.analyze_proj: 解析vmake_proj.lua配置文件
-    辅助功能函数:
-        A01.clean_dir: 清空目标文件夹
-        A02.detect_path: 检测目标路径是否存在
-        A03.move_dir: 移动文件夹到目标
 ]]
 -- *****************************************************************
 -- *****************************************************************
@@ -72,7 +78,8 @@ vmake_root = vmake_root_gen();
 vmake_info = {
     name = "vmake",
     version = "v.src#2026.01.24-22:46",
-    author = "vmake",
+    author = "vgtxc",
+    email = "void",
     description = "vmake is a make tool",
     license = "MIT",
     url = "https://github.com/vmake-dev/vmake",
@@ -89,14 +96,14 @@ vmake_tool = {
     --     -- 基础字段
     --     url = nil,  -- 官网地址
     --     download_url = nil, -- 下载地址, 优先下载压缩包格式
-    --     install_flag = false,   -- 是否安装
-    --     excu = nil, -- 执行文件
-    --     root = nil, -- 安装路径
+    --     install_flag = false,   -- 是否安装<必要字段>
+    --     excu = nil, -- 执行文件<必要字段>
+    --     root = nil, -- 安装路径<必要字段>
     --     config = nil,   -- 配置文件
     --     cache = nil,    -- 缓存路径
-    --     version = nil,  -- 版本
+    --     version = nil,  -- 版本<必要字段>
     --     -- SDK字段
-    --     active_flag = false, -- 是否激活
+    --     active_flag = false, -- 是否激活<必要字段>
     --     pkg_root = nil,  -- 包安装根目录
     --     pkg_manager_root = nil, -- 包管理器根目录
     --     pkg_manager_excu = nil, -- 包管理器执行文件
@@ -577,6 +584,8 @@ vmake_sys = {
     -- 彩色打印
     print_color = function(color, str, ...)
         local color_table = {
+            -- 基础颜色
+            black = "\x1b[30m",
             red = "\x1b[31m",
             green = "\x1b[32m",
             yellow = "\x1b[33m",
@@ -584,7 +593,28 @@ vmake_sys = {
             magenta = "\x1b[35m",
             cyan = "\x1b[36m",
             white = "\x1b[37m",
+            gray = "\x1b[90m",
+            -- 亮色
+            bright_red = "\x1b[91m",
+            bright_green = "\x1b[92m",
+            bright_yellow = "\x1b[93m",
+            bright_blue = "\x1b[94m",
+            bright_magenta = "\x1b[95m",
+            bright_cyan = "\x1b[96m",
+            bright_white = "\x1b[97m",
+            -- 样式
+            bold = "\x1b[1m",
+            dim = "\x1b[2m",
+            underline = "\x1b[4m",
+            blink = "\x1b[5m",
+            reverse = "\x1b[7m",
+            -- 重置
             reset = "\x1b[0m",
+            reset_bold = "\x1b[22m",
+            reset_dim = "\x1b[22m",
+            reset_underline = "\x1b[24m",
+            reset_blink = "\x1b[25m",
+            reset_reverse = "\x1b[27m",
         };
         local print_color = color;
         if color_table[print_color] == nil then print_color = "green"; end;
@@ -596,7 +626,7 @@ vmake_sys = {
                 out_str = out_str..tostring(arg_val);
             end
         end
-        print(color_table[print_color],out_str,color_table["reset"]);
+        print(color_table[print_color]..out_str..color_table["reset"]);
     end;
     -- (01.01.)清空目标文件夹;先删除再创建
     clean_dir = function(dir_path)
@@ -695,18 +725,18 @@ vmake_sys = {
         local cmd_install_flag = vmake_tool[tool_name].install_flag;
         local cmd_excu_path = vmake_tool[tool_name][excu_name];
         if cmd_install_flag==false then
-            vmake_sys.print_color("red", string.format("\t\terr->location:<func>vmake_cmd.run_vmake_tool.%s...", tool_name));
-            vmake_sys.print_color("red", string.format("\t\terr->'%s' is not installed!!!", tool_name));
+            vmake_sys.print_color("red", string.format("err->location:<func>vmake_cmd.run_vmake_tool.%s...", tool_name));
+            vmake_sys.print_color("red", string.format("err->'%s' is not installed!!!", tool_name));
             return false;
         end
         local cmd = string.format("%s %s", cmd_excu_path, cmd_arg);
-        vmake_sys.print_color("cyan", string.format("\t\tdebug->location:<func>vmake_sys.run_vmake_tool..."));
-        vmake_sys.print_color("cyan", string.format("\t\tdebug->the cmd: %s", cmd));
+        vmake_sys.print_color("cyan", string.format("\tdebug->location:<func>vmake_sys.run_vmake_tool..."));
+        vmake_sys.print_color("cyan", string.format("\tdebug->the cmd: %s", cmd));
         os.execute(cmd);
         return true;
     end;
     -- (02.03.)默认下载
-    install_vmake_tool = function(tool_name) 
+    install_vmake_tool = function(tool_name)
         local down_url = vmake_tool[tool_name].download_url;
         vmake_sys.clean_dir(vmake_tool.a7z.cache);
         if type(down_url)=="string" then
@@ -740,7 +770,7 @@ vmake_sys = {
                     unzip_dir = vmake_tool.a7z.cache.."/"..down_file_name;
                 end;
             end;
-            vmake_sys.clean_dir(vmake_tool.a7z.cache); 
+            vmake_sys.clean_dir(vmake_tool.a7z.cache);
             vmake_cmd.tool.a7z_inside(down_file_path, unzip_dir, "x");  -- 解压
             unzip_dir = vmake_sys.get_deep_path(unzip_dir);   -- 获取深层解压路径
             local install_dir = vmake_tool[tool_name].root;
@@ -753,13 +783,13 @@ vmake_sys = {
     end;
     uninstall_vmake_tool = function(tool_name)
         vmake_sys.clean_dir(vmake_tool[tool_name].root);
-        vmake_sys.print_color("green", string.format("\tinfo->location:<func>vmake_sys.uninstall.%s...success remove!!!",tool_name));
+        vmake_sys.print_color("green", string.format("info->location:<func>vmake_sys.uninstall.%s...success remove!!!",tool_name));
     end;
     -- (02.04.)设置环境变量
     set_vmake_tool_env_cat_table = function(tableA,tableB)
-        vmake_sys.print_color("green","\tinfo->location:<func>vmake_sys.sys_env_table_cat...");
+        vmake_sys.print_color("green","info->location:<func>vmake_sys.sys_env_table_cat...");
         local retval = {};
-        if (type(tableA)~="table" or type(tableB)~="table") then vmake_sys.print_color("red","\terr->parameter tableA or tableB is not table!!!"); return retval; end;
+        if (type(tableA)~="table" or type(tableB)~="table") then vmake_sys.print_color("red","err->parameter tableA or tableB is not table!!!"); return retval; end;
         -- if (type(tableA)=="table" and #tableA==0) then return tableB; end;
         -- if (type(tableB)=="table" and #tableB==0) then return tableA; end;
         for kA,vA in pairs(tableA) do 
@@ -777,11 +807,11 @@ vmake_sys = {
             ::next_loop::;
         end;
         -- for k,v in pairs(retval) do for _,v1 in pairs(v) do print(k,"...",v1); end; end;
-        vmake_sys.print_color("green","\tinfo->location:<func>vmake_sys.sys_env_table_cat...over");
+        vmake_sys.print_color("green","info->location:<func>vmake_sys.sys_env_table_cat...over");
         return retval;
     end;
     set_vmake_tool_env_gen_table  = function()
-        vmake_sys.print_color("green", "\tinfo->location:<func>vmake_sys.set_vmake_tool_env_gen_table...");
+        vmake_sys.print_color("green", "info->location:<func>vmake_sys.set_vmake_tool_env_gen_table...");
         local retval = {};
         local tool_env = {};
         local sys_env = {};
@@ -808,9 +838,9 @@ vmake_sys = {
         retval = vmake_sys.set_vmake_tool_env_cat_table(tool_env,sys_env);
         -- for k,v in pairs(retval) do for _,v1 in pairs(v) do print(k,"...",v1); end; end;
         return retval;
-    end;
-    set_vmake_tool_env_gen_str = function()
-        vmake_sys.print_color("green", "\tinfo->location:<func>vmake_sys.set_vmake_tool_env_gen_str...");
+            end;
+            set_vmake_tool_env_gen_str  = function()
+                vmake_sys.print_color("green", "info->location:<func>vmake_sys.set_vmake_tool_env_gen_str...");
         local retval = {};
         local t_table = vmake_sys.set_vmake_tool_env_gen_table();
         for k,v in pairs(t_table) do
@@ -820,26 +850,27 @@ vmake_sys = {
                 if i==1 then retval[k] = t_table[k][i]; end;
             end;
         end;
-        for k,v in pairs(retval) do print(k,"...",v);end;
+        -- for k,v in pairs(retval) do print(k,"...",v);end;
         return retval;
-    end;
-    set_vmake_tool_env_gen_shell = function()
-        vmake_sys.print_color("green", "\tinfo->location:<func>vmake_sys.set_vmake_tool_env_gen_shell...");
+            end;
+            set_vmake_tool_env_gen_shell  = function()
+                vmake_sys.print_color("green", "info->location:<func>vmake_sys.set_vmake_tool_env_gen_shell...");
         -- A.调用set_vmake_tool_env_gen_str生成环境变量key:value表
         local env_table = vmake_sys.set_vmake_tool_env_gen_str();
         -- for k,v in pairs(env_table) do print(k,"...",v);end;
-        -- B.遍历变量表,写入powershell文件,只修改环境变量,不打开行的窗口
-        local ps_file = vmake_root .. "/script/vmake_shell.ps1";
-        local ps_handle = io.open(ps_file, "w");
-        if ps_handle == nil then
-            vmake_sys.print_color("red", "\t\terr->failed to create powershell script: " .. ps_file);
+        -- B.遍历变量表,写入cmd文件,只修改环境变量,不打开行的窗口
+        local cmd_file = vmake_root .. "/script/vmake_shell.bat";
+        local cmd_handle = io.open(cmd_file, "w");
+        if cmd_handle == nil then
+            vmake_sys.print_color("red", "err->failed to create cmd script: " .. cmd_file);
             return false;
         end;
-        -- 写入PowerShell脚本头部
-        ps_handle:write("# vmake environment variables setup script\n");
-        ps_handle:write("# Auto-generated by vmake\n");
-        ps_handle:write("# This script sets environment variables for the current session\n");
-        ps_handle:write("# Usage: powershell -ExecutionPolicy Bypass -File vmake_shell.ps1\n\n");
+        -- 写入CMD脚本头部
+        cmd_handle:write("@echo off\n");
+        cmd_handle:write("REM vmake environment variables setup script\n");
+        cmd_handle:write("REM Auto-generated by vmake\n");
+        cmd_handle:write("REM This script sets environment variables for the current session\n");
+        cmd_handle:write("REM Usage: vmake_shell.bat\n\n");
         -- 收集所有环境变量键
         local env_keys = {};
         for env_name, env_value in pairs(env_table) do
@@ -851,43 +882,44 @@ vmake_sys = {
         for i, env_name in ipairs(env_keys) do
             local env_name_lower = string.lower(env_name);
             if env_name_lower ~= "path" then
-                ps_handle:write(string.format("$env:%s = \"%s\"\n", env_name, env_table[env_name]));
+                cmd_handle:write(string.format("set \"%s=%s\"\n", env_name, env_table[env_name]));
             end;
         end;
         -- 将 PATH 放到最后
         for env_name, env_value in pairs(env_table) do
             local env_name_lower = string.lower(env_name);
             if env_name_lower == "path" then
-                ps_handle:write(string.format("$env:%s = \"%s\"\n", env_name, env_value));
+                cmd_handle:write(string.format("set \"%s=%s\"\n", env_name, env_value));
             end;
         end;
-        ps_handle:write("\nWrite-Host \"info->vmake environment variables set successfully\" -ForegroundColor Green\n");
-        ps_handle:close();
-        vmake_sys.print_color("cyan", "\tdebug->powershell script created: " .. ps_file);
+        cmd_handle:write("\necho info->vmake environment variables set successfully\n");
+        cmd_handle:write("\ncall cmd\n");
+        cmd_handle:close();
+        vmake_sys.print_color("cyan", "\tdebug->cmd script created: " .. cmd_file);
         return true;
     end;
     set_vmake_tool_env_gen_term = function(new_window)
-        vmake_sys.print_color("green", "\tinfo->location:<func>vmake_sys.set_vmake_tool_env_gen_term...");
+        vmake_sys.print_color("green", "info->location:<func>vmake_sys.set_vmake_tool_env_gen_term...");
         -- A.调用set_vmake_tool_env_gen_shell重新生成shell文件
         local gen_result = vmake_sys.set_vmake_tool_env_gen_shell();
         if gen_result == false then
-            vmake_sys.print_color("red", "\t\terr->failed to generate powershell script");
+            vmake_sys.print_color("red", "err->failed to generate cmd script");
             return false;
         end;
-        -- B.调用生成的powershell文件
-        local ps_file = vmake_root .. "/script/vmake_shell.ps1";
-        
+        -- B.调用生成的cmd文件
+        local cmd_file = vmake_root .. "/script/vmake_shell.bat";
+
         -- 如果没有指定 new_window 参数，默认为 true（兼容旧行为）
         if new_window == nil then new_window = true; end;
-        
+
         if new_window == true then
             -- 打开新窗口（独立运行或用户明确要求）
-            local cmd = string.format('powershell -ExecutionPolicy Bypass -NoExit -File "%s"', ps_file);
+            local cmd = string.format('cmd /k "%s"', cmd_file);
             vmake_sys.print_color("cyan", "\tdebug->launching new terminal with: " .. cmd);
             os.execute("start " .. cmd);
         else
             -- 在当前窗口执行（命令行调用）
-            local cmd = string.format('powershell -ExecutionPolicy Bypass -NoExit -Command "& \'%s\'"', ps_file);
+            local cmd = string.format('cmd /k "%s"', cmd_file);
             vmake_sys.print_color("cyan", "\tdebug->executing in current terminal with: " .. cmd);
             os.execute(cmd);
         end;
@@ -923,7 +955,7 @@ vmake_sys = {
         ]], current_time, vmake_tool.lua.pkg_manager_root, vmake_tool.lua.excu, vmake_tool.lua.bin_root, vmake_tool.lua.include_root, vmake_tool.lua.lib_root);
         local config_handle = io.open(luarocks_config_file_path, "w");
         if config_handle == nil then
-            vmake_sys.print_color("red", "\t\terr->failed to create luarocks config: " .. luarocks_config_file_path);
+            vmake_sys.print_color("red", "err->failed to create luarocks config: " .. luarocks_config_file_path);
             return false;
         end;
         config_handle:write(config_content);
@@ -1082,7 +1114,7 @@ vmake_cmd = {
             end
             -- 使用 start 命令在新窗口中运行批处理文件，支持用户交互
             vmake_sys.print_color("cyan", string.format("\tdebug->location:<func>vmake_cmd.install.rust...launching rustup installer..."));
-            vmake_sys.print_color("yellow", string.format("\tinfo->Please complete the Rust installation in the new window"));
+            vmake_sys.print_color("yellow", string.format("info->Please complete the Rust installation in the new window"));
             os.execute(string.format("start \"Rust Installer\" \"%s\"", rustup_bat));
             vmake_sys.print_color("cyan", string.format("\tdebug->location:<func>vmake_cmd.install.rust...rustup installer launched!!!"));
         end;
@@ -1108,30 +1140,97 @@ vmake_cmd = {
         zig = function() vmake_sys.uninstall_vmake_tool("zig"); end;
         vlang = function() vmake_sys.uninstall_vmake_tool("vlang"); end;
     },
-    creat_batch = function()
-        vmake_sys.print_color("green", "\tinfo->location:<func>vmake_cmd.creat_batch...");
+    creat_batch = function(term_cmd_conf)
+        vmake_sys.print_color("green", "info->location:<func>vmake_cmd.creat_batch...");
         local script_dir = vmake_root .. "/script";
         local created_count = 0;
         for name, content in pairs(vmake_batch) do
-            local script_path = script_dir .. "/" .. name .. ".bat";
+            -- 如果指定了脚本名称，只创建指定的脚本
+            if term_cmd_conf ~= nil and term_cmd_conf ~= "" and name ~= term_cmd_conf then
+                goto continue_loop;
+            end
+            -- 根据 term_type 决定文件扩展名
+            local file_ext = ".txt";  -- 默认创建 txt 文件
+            if content.term_type == "cmd" then
+                file_ext = ".bat";
+            elseif content.term_type == "powershell" then
+                file_ext = ".ps1";
+            end
+            local script_path = script_dir .. "/" .. name .. file_ext;
             local script_file = io.open(script_path, "w");
             if script_file == nil then
-                vmake_sys.print_color("red", string.format("\terr->failed to create script: %s", script_path));
+                vmake_sys.print_color("red", string.format("err->failed to create script: %s", script_path));
             else
-                -- 写入脚本内容
-                for _, line in ipairs(content) do
+                -- 写入脚本内容（从 batch_file 字段获取）
+                for _, line in ipairs(content.batch_file) do
                     script_file:write(line .. "\n");
                 end
                 script_file:close();
                 vmake_sys.print_color("cyan", string.format("\tdebug->created script: %s", script_path));
                 created_count = created_count + 1;
             end
+            ::continue_loop::
         end
-        vmake_sys.print_color("green", string.format("\tinfo->created %d script(s) successfully!!!", created_count));
+        vmake_sys.print_color("green", string.format("info->created %d script(s) successfully!!!", created_count));
         return true;
     end,
+    show_info = function()
+        -- 使用彩色打印vmake_info中的信息（现代高对比度列表样式）
+        -- 原始 vmake_info 字段白名单（只打印这些字段）
+        local original_fields = {
+            "name",
+            "version",
+            "author",
+            "description",
+            "license",
+            "url"
+        };
+        -- 字段图标映射
+        local field_icons = {
+            name = "📌",
+            version = "🏷️",
+            author = "👤",
+            description = "📝",
+            license = "⚖️",
+            url = "🔗"
+        };
+        -- 字段颜色映射（高对比度：key使用灰色，value使用亮色）
+        local field_colors = {
+            name = "92",
+            version = "95",
+            author = "96",
+            description = "97",
+            license = "93",
+            url = "94"
+        };
+        -- 计算最大字段名长度用于对齐
+        local max_field_len = 0;
+        for _, field_name in ipairs(original_fields) do
+            if #field_name > max_field_len then
+                max_field_len = #field_name;
+            end
+        end;
+        -- 标题
+        print("\n\27[94m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\27[0m");
+        print("  \27[93m📦 " .. (vmake_info.name or "VMake") .. " Information\27[0m");
+        print("\27[94m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\27[0m\n");
+        -- 只打印白名单中的字段
+        for _, field_name in ipairs(original_fields) do
+            local field_value = vmake_info[field_name];
+            if field_value then
+                local icon = field_icons[field_name] or "•";
+                local color = field_colors[field_name] or "97";
+                -- 计算key部分的对齐宽度
+                local key_part = "  " .. icon .. " " .. field_name .. ":";
+                local padding = string.rep(" ", max_field_len - #field_name);
+                io.write("\27[90m" .. key_part .. padding .. " \27[0m");  -- 灰色key
+                io.write("\27[" .. color .. "m" .. field_value .. "\27[0m\n");  -- 亮色value
+            end;
+        end;
+        print("\27[94m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\27[0m");
+    end;
     help = function()
-        vmake_sys.print_color("green","\tinfo->location:<func>vmake_cmd.help...usage: vmake <command> [options]");
+        vmake_sys.print_color("green","info->location:<func>vmake_cmd.help...usage: vmake <command> [options]");
         vmake_sys.print_color("green",string.format("\t\t%s\t->\t%s","help","show help information"));
         vmake_sys.print_color("green",string.format("\t\t%s\t->\t%s","list","list all installed tools"));
         vmake_sys.print_color("green",string.format("\t\t%s\t->\t%s","setenv","set tools environment"));
@@ -1140,8 +1239,8 @@ vmake_cmd = {
         vmake_sys.print_color("green",string.format("\t\t%s\t->\t%s","creat_batch","create batch scripts from vmake_batch templates"));
     end;
     list = function()
-        vmake_sys.print_color("green","\tinfo->location:<func>vmake_cmd.list...");
-        vmake_sys.print_color("green","\tinfo->vmake_tool list:");
+        vmake_sys.print_color("green","info->location:<func>vmake_cmd.list...");
+        vmake_sys.print_color("green","info->vmake_tool list:");
         vmake_sys.print_color("green","\t------------------------------");
         vmake_sys.print_color("green",string.format("\t%s\t->\t%s","tool_name","install_flag"));
         vmake_sys.print_color("green","\t------------------------------");
@@ -1167,54 +1266,72 @@ vmake_cmd = {
 vmake_batch = {
     -- 代理设置脚本 - Clash
     proxy_clash = {
-        "@echo off",
-        "set http_proxy=127.0.0.1:7890",
-        "set https_proxy=127.0.0.1:7890",
-        "echo info-}set the proxy to http://127.0.0.1:7890",
+        term_type = "cmd",
+        batch_file = {
+            "@echo off",
+            "set http_proxy=127.0.0.1:7890",
+            "set https_proxy=127.0.0.1:7890",
+            "echo info-}set the proxy to http://127.0.0.1:7890",
+        },
     },
     -- 代理设置脚本 - V2Ray
     proxy_v2ray = {
-        "@echo off",
-        "set http_proxy=127.0.0.1:7880",
-        "set https_proxy=127.0.0.1:7880",
-        "echo info-}set the proxy to http://127.0.0.1:7880",
+        term_type = "cmd",
+        batch_file = {
+            "@echo off",
+            "set http_proxy=127.0.0.1:7880",
+            "set https_proxy=127.0.0.1:7880",
+            "echo info-}set the proxy to http://127.0.0.1:7880",
+        },
     },
     -- 取消代理设置
     unproxy = {
-        "@echo off",
-        "set http_proxy=",
-        "set https_proxy=",
-        "echo info-}remove the proxy",
+        term_type = "cmd",
+        batch_file = {
+            "@echo off",
+            "set http_proxy=",
+            "set https_proxy=",
+            "echo info-}remove the proxy",
+        },
     },
     -- 前缀工具脚本 - pixi
     prefix = {
-        "@echo off",
-        "call pixi shell --manifest-path " .. vmake_root .. "/tool/pixi/pixi.toml",
-        "echo info-}open prefix, toml<" .. vmake_root .. "/tool/pixi/pixi.toml>",
+        term_type = "cmd",
+        batch_file = {
+            "@echo off",
+            "call pixi shell --manifest-path " .. vmake_root .. "/tool/pixi/pixi.toml",
+            "echo info-}open prefix, toml<" .. vmake_root .. "/tool/pixi/pixi.toml>",
+        },
     },
     -- Win11右键菜单恢复为Win10样式
     win11_right_click = {
-        "@echo off",
-        "reg add \"HKCU/Software/Classes/CLSID/{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}/InprocServer32/\" /f /ve",
-        "taskkill /f /im explorer.exe & start explorer.exe",
-        "echo info-}change win11 right click menu to win10 style",
+        term_type = "cmd",
+        batch_file = {
+            "@echo off",
+            "reg add \"HKCU/Software/Classes/CLSID/{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}/InprocServer32/\" /f /ve",
+            "taskkill /f /im explorer.exe & start explorer.exe",
+            "echo info-}change win11 right click menu to win10 style",
+        },
     },
     -- VHD虚拟硬盘挂载工具
     vhd_mount = {
-        "@echo off",
-        "echo.",
-        "set /p vhd_path=info-}The vhd path:",
-        "if not exist %vhd_path% ( echo error-}file note exist!!!&timeout 3 >nul&exit )",
-        "set /p vhd_sign=info-}The vhd mount as[A-Z]:",
-        "cmd /c \"echo SELECT VDISK FILE=%vhd_path% & echo ATTACH VDISK & echo sel par 1 & echo assign letter=%vhd_sign%\"|diskpart.exe",
-        "echo.",
-        "echo info-}The %vhd% is connecting...",
-        "echo.",
-        "echo info-}The %vhd% is ready!!!",
-        "echo.",
-        "echo info-}The operation over, Return to this window and press any key can pop the vhd!!!",
-        "pause>nul",
-        "cmd /c \"echo SELECT VDISK FILE=%vhd% & echo DETACH VDISK\"|diskpart.exe",
+        term_type = "cmd",
+        batch_file = {
+            "@echo off",
+            "echo.",
+            "set /p vhd_path=info-}The vhd path:",
+            "if not exist %vhd_path% ( echo error-}file note exist!!!&timeout 3 >nul&exit )",
+            "set /p vhd_sign=info-}The vhd mount as[A-Z]:",
+            "cmd /c \"echo SELECT VDISK FILE=%vhd_path% & echo ATTACH VDISK & echo sel par 1 & echo assign letter=%vhd_sign%\"|diskpart.exe",
+            "echo.",
+            "echo info-}The %vhd% is connecting...",
+            "echo.",
+            "echo info-}The %vhd% is ready!!!",
+            "echo.",
+            "echo info-}The operation over, Return to this window and press any key can pop the vhd!!!",
+            "pause>nul",
+            "cmd /c \"echo SELECT VDISK FILE=%vhd% & echo DETACH VDISK\"|diskpart.exe",
+        },
     },
 };
 
@@ -1232,8 +1349,8 @@ function analyze_config(config_file)
     end;
     local config_handle = io.open(config_file, "r");
     if config_handle == nil then
-        vmake_sys.print_color("red", "\terr->config file not found: " .. config_file);
-        vmake_sys.print_color("red", "\terr->configuration update stopped due to missing config file");
+        vmake_sys.print_color("red", "err->config file not found: " .. config_file);
+        vmake_sys.print_color("red", "err->configuration update stopped due to missing config file");
         return false;
     end;
     local config_content = config_handle:read("*a");
@@ -1244,12 +1361,12 @@ function analyze_config(config_file)
     setmetatable(config_env, {__index = _G});
     local config_func, config_error = load(config_content, config_file, "t", config_env);
     if not config_func then
-        vmake_sys.print_color("red", "\terr->failed to load config file: " .. tostring(config_error));
+        vmake_sys.print_color("red", "err->failed to load config file: " .. tostring(config_error));
         return false;
     end;
     local config_status, load_error = pcall(config_func);
     if not config_status then
-        vmake_sys.print_color("red", "\terr->failed to execute config file: " .. tostring(load_error));
+        vmake_sys.print_color("red", "err->failed to execute config file: " .. tostring(load_error));
         return false;
     end;
     vmake_sys.print_color("cyan", "\tdebug->loading config file: " .. config_file);
@@ -1267,7 +1384,7 @@ function analyze_config(config_file)
                 vmake_info[k] = v;
             end;
         end;
-        vmake_sys.print_color("green", "\tinfo->vmake_info updated from config.lua");
+        vmake_sys.print_color("cyan", "\tdebug->vmake_info updated from config.lua");
     end;
 
     -- 更新 vmake_tool（只更新已存在的工具属性，不允许添加新工具）
@@ -1317,14 +1434,14 @@ function analyze_config(config_file)
             end;
         end;
         if new_tool_count > 0 then
-            vmake_sys.print_color("yellow", string.format("\twarn->skipped %d new tool(s) from config.lua (only existing tools can be updated)", new_tool_count));
+            vmake_sys.print_color("yellow", string.format("warn->skipped %d new tool(s) from config.lua (only existing tools can be updated)", new_tool_count));
         end;
-        vmake_sys.print_color("green", string.format("\tinfo->vmake_tool updated from config.lua (%d property updates)", updated_count));
+        vmake_sys.print_color("cyan", string.format("\tdebug->vmake_tool updated from config.lua (%d property updates)", updated_count));
     end;
 
     -- (03)更新安装软件信息
     vmake_sys.check_tool_install();
-    vmake_sys.print_color("green", "\tinfo->config analysis completed successfully");
+    vmake_sys.print_color("cyan", "\tdebug->config analysis completed successfully");
     return true;
 end
 
@@ -1335,13 +1452,13 @@ function analyze_term()
     -- 命令实现函数
     function term_install(term_cmd_conf) vmake_cmd.install[term_cmd_conf](); end;
     function term_uninstall(term_cmd_conf) vmake_cmd.uninstall[term_cmd_conf](); end;
-    vmake_sys.print_color("green","\tinfo->location:<func>analyze_term...analyze cmd start!!!");
+    vmake_sys.print_color("green","info->location:<func>analyze_term...analyze cmd start!!!");
     -- 获取全局变量下传递的命令行参数
     local term_cmd_type = arg[1];   -- 命令类型
     local term_cmd_conf = arg[2];   -- 命令参数
     for idx=3,#arg do term_cmd_conf = term_cmd_conf .. " " .. arg[idx]; end;
     if term_cmd_conf==nil then term_cmd_conf = ""; end;
-    vmake_sys.print_color("cyan",string.format("\tdebug->location<func>analyze_term...term_cmd_type:'%s'\tterm_cmd_conf:'%s'",term_cmd_type,term_cmd_conf));
+    vmake_sys.print_color("magenta",string.format("\tdebug->location<func>analyze_term...term_cmd_type:'%s'\tterm_cmd_conf:'%s'",term_cmd_type,term_cmd_conf));
     -- 命令调用
     if term_cmd_type~=nil then
         -- 内置工具命令调用
@@ -1358,6 +1475,8 @@ function analyze_term()
         elseif (term_cmd_type=="prefix") then
             vmake_cmd.tool.pixi_inside(term_cmd_conf);
         -- 工具命令分析
+        elseif (term_cmd_conf=="version") then
+            vmake_cmd.show_info();
         elseif (term_cmd_type=="install") then
             term_install(term_cmd_conf);
             vmake_sys.check_tool_install();
@@ -1410,9 +1529,11 @@ end
 
 -- 01.软件初始化配置
 function vmake_init()
+    vmake_cmd.show_info();
     vmake_sys.check_tool_install(); -- 检测内置软件安装状态
     -- vmake_cmd.clean();  -- 重置缓存状态
     vmake_cmd.creat_batch();   -- 创建系统脚本
+    vmake_sys.set_vmake_tool_env_gen_shell();   -- 创建vmake_shell脚本
     vmake_sys.luarocks_gen_config(); -- 配置luarocks的配置文件
 end
 

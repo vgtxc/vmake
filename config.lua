@@ -1,15 +1,29 @@
+-- lastEdit=>2026.02.22-14:18
+-- lastEdit=>2026.02.21-21:00
 -- lastEdit=>2026.01.08-22:52
 -- creat: 2026.01.08
 -- (01)软件相关信息
 vmake_info = {
     name = "vmake",
-    version = "0.0.0",
+    version = "0.0.1",
     author = "vgtxc",
     email = "<email>",
     url = "https://github.com/vgtxc/vmake",
+    description = "vmake is a make tool maneger!!!"
 };
 -- (04)配置内置工具
 vmake_tool = {
+    vmake = {
+        sys_env = {
+            path = {
+                "C:/sftw/tool/devTool/fastStone/v10.4.0",
+                "C:/sftw/tool/devTool/ffmpeg/v20251123/bin",
+                "C:/sftw/tool/devTool/ncnnVulkan",
+                "C:/sftw/tool/devTool/sublimeText",
+                "C:/sftw/tool/devTool/vscode",
+            },
+        },
+    },
     lua = {
         sys_env = {
             cc = "gcc",
@@ -32,7 +46,7 @@ vmake_tool = {
     mingw_llvm = {active_flag = true,},    
     msvc_llvm = {active_flag = true,},    
     nodejs = {active_flag = true,},    
-    python = {active_flag = false,},    
+    python = {active_flag = true,},    
     python_enbed = {active_flag = false,},    
     rust = {active_flag = true,},    
     golang = {active_flag = true,},    
